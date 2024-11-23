@@ -1,131 +1,155 @@
-class Slider {
-    constructor(selector, config = {}) {
-        this.sliderList = document.querySelector(selector);
-        this.slides = this.sliderList.querySelectorAll(".slide");
-        this.currentIndex = 0;
-        this.config = {
-            interval: 5000,
-            showIndicators: true,
-            showControls: true,
-            ...config
-        };
 
-        this.init();
-    }
+function Slider(sliderSelector, config = {}) {
+    this.sliderList = document.querySelector(sliderSelector);
+    this.slides = this.sliderList.querySelectorAll(".slider");
+    this.currentIndex = 0;
+    this.config = Object.assign({
+        interval: 5000,
+        showIndicators: true,
+        showControls: true,
+    }, config);
+    this.autoSlide = null;
+    this.paused = false;
 
-    init() {
-        this.createControls();
-        this.createIndicators();
-        this.startSlide();
-        this.addHoverListeners();
-    }
+    this.updateIndicators = function () {
+        if (!this.indicators) return;
+        this.indicators.forEach(indicator => indicator.classList.remove('active'));
+        this.indicators[this.currentIndex].classList.add('active');
+    };
 
-    createControls() {
-        const controlsContainer = document.createElement("div");
-        controlsContainer.className = "controls";
+    this.moveSlider = function (index) {
+        const slideWidth = this.slides[0].clientWidth;
+        this.sliderList.style.transform = `translateX(-${index * slideWidth}px)`;
+        this.currentIndex = index;
+        this.updateIndicators();
+    };
 
-        this.prevButton = document.createElement("button");
-        this.prevButton.className = "prev";
-        this.prevButton.textContent = "Previous";
-        controlsContainer.appendChild(this.prevButton);
-
-        this.nextButton = document.createElement("button");
-        this.nextButton.className = "next";
-        this.nextButton.textContent = "Next";
-        controlsContainer.appendChild(this.nextButton);
-
-        this.pauseButton = document.createElement("button");
-        this.pauseButton.className = "pause";
-        this.pauseButton.textContent = "Pause";
-        controlsContainer.appendChild(this.pauseButton);
-
-        this.sliderList.parentNode.appendChild(controlsContainer);
-
-        if (!this.prevButton || !this.nextButton || !this.pauseButton) {
-            console.error('Не удалось создать кнопки управления');
-            return;
-        }
-
-        this.bindControlEvents();
-    }
-
-    bindControlEvents() {
-        this.prevButton.addEventListener('click', this.prevSlide.bind(this));
-        this.nextButton.addEventListener('click', this.nextSlide.bind(this)); 1
-
-        this.pauseButton.addEventListener("click", () => {
-            if (this.paused) {
-                this.startSlide();
-                this.pauseButton.textContent = "Pause";
-            } else {
-                this.stopSlide();
-                this.pauseButton.textContent = "Play";
-            }
-            this.paused = !this.paused;
-        });
-    }
-
-    createIndicators() {
-        const indicatorsContainer = document.createElement("div");
-        indicatorsContainer.className = "indicators";
-
-        this.indicators = [];
-        this.slides.forEach((_, index) => {
-            const indicator = document.createElement("button");
-            indicator.className = "indicator";
-            indicator.textContent = index + 1;
-            indicator.setAttribute("data-index", index);
-            indicatorsContainer.appendChild(indicator);
-            this.indicators.push(indicator);
-        });
-
-        this.sliderList.parentNode.appendChild(indicatorsContainer);
-
-        this.bindIndicatorEvents();
-    }
-
-    bindIndicatorEvents() {
-        this.indicators.forEach((indicator, index) => {
-            indicator.addEventListener("click", () => {
-                this.stopSlide();
-                this.goToSlide(index);
-                if (!this.paused) this.startSlide();
-            });
-        });
-    }
-
-    startSlide() {
+    this.startSlide = function () {
+        if (this.autoSlide) clearInterval(this.autoSlide);
         this.autoSlide = setInterval(() => {
-            this.nextSlide();
+            this.currentIndex = (this.currentIndex < this.slides.length - 1) ? this.currentIndex + 1 : 0;
+            this.moveSlider(this.currentIndex);
         }, this.config.interval);
-    }
+    };
 
-    stopSlide() {
+    this.stopSlide = function () {
         clearInterval(this.autoSlide);
         this.autoSlide = null;
-    }
+    };
 
-    goToSlide(index) {
-        this.currentIndex = index;
-        this.sliderList.style.transform = `translateX(-${index * 100}%)`;
-        this.updateIndicators();
-    }
+    this.handleKeyboard = function (event) {
+        switch (event.key) {
+            case "ArrowLeft":
+                this.prevSlide();
+                break;
+            case "ArrowRight":
+                this.nextSlide();
+                break;
+            default:
+                break;
+        }
+    };
 
-    updateIndicators() {
-        this.indicators.forEach((indicator, index) => {
-            indicator.classList.toggle('active', index === this.currentIndex);
-        });
-    }
+    this.prevSlide = function () {
+        if (this.currentIndex > 0) {
+            this.currentIndex--;
+            this.moveSlider(this.currentIndex);
+        }
+        this.stopSlide();
+        if (!this.paused) this.startSlide();
+    };
 
-    addHoverListeners() {
-        this.sliderList.addEventListener('mouseenter', () => this.stopSlide());
-        this.sliderList.addEventListener('mouseleave', () => {
-            if (!this.paused) this.startSlide();
-        });
-    }
+    this.nextSlide = function () {
+        if (this.currentIndex < this.slides.length - 1) {
+            this.currentIndex++;
+            this.moveSlider(this.currentIndex);
+        }
+        this.stopSlide();
+        if (!this.paused) this.startSlide();
+    };
+
+    this.init = function () {
+        document.addEventListener("keydown", this.handleKeyboard.bind(this));
+        if (this.config.showControls) this.createControls();
+        if (this.config.showIndicators) this.createIndicators();
+        this.startSlide();
+    };
+
+    this.init();
 }
 
-const slider = new Slider(".slider", {
+
+Slider.prototype.createControls = function () {
+    const controlsContainer = document.createElement('div');
+    controlsContainer.className = 'controls';
+
+    this.prevButton = document.createElement('button');
+    this.prevButton.className = 'prev';
+    this.prevButton.textContent = 'Previous';
+    controlsContainer.appendChild(this.prevButton);
+
+    this.nextButton = document.createElement('button');
+    this.nextButton.className = 'next';
+    this.nextButton.textContent = 'Next';
+    controlsContainer.appendChild(this.nextButton);
+
+    this.pauseButton = document.createElement('button');
+    this.pauseButton.className = 'pause';
+    this.pauseButton.textContent = 'Pause';
+    controlsContainer.appendChild(this.pauseButton);
+
+    document.body.appendChild(controlsContainer);
+
+    this.bindControlEvents();
+};
+
+Slider.prototype.bindControlEvents = function () {
+    this.prevButton.addEventListener("click", () => this.prevSlide());
+    this.nextButton.addEventListener("click", () => this.nextSlide());
+
+    this.pauseButton.addEventListener("click", () => {
+        if (this.paused) {
+            this.startSlide();
+            this.pauseButton.textContent = 'Pause';
+        } else {
+            this.stopSlide();
+            this.pauseButton.textContent = 'Play';
+        }
+        this.paused = !this.paused;
+    });
+};
+
+
+Slider.prototype.createIndicators = function () {
+    const indicatorContainer = document.createElement('div');
+    indicatorContainer.className = 'slider-indicator';
+
+    this.indicators = [];
+    this.slides.forEach((_, index) => {
+        const indicator = document.createElement('button');
+        indicator.className = 'indicator';
+        indicator.textContent = index + 1;
+        indicator.setAttribute('data-index', index);
+        indicatorContainer.appendChild(indicator);
+        this.indicators.push(indicator);
+    });
+
+    document.body.appendChild(indicatorContainer);
+    this.bindIndicatorEvents();
+};
+
+Slider.prototype.bindIndicatorEvents = function () {
+    this.indicators.forEach((indicator, index) => {
+        indicator.addEventListener("click", () => {
+            this.stopSlide();
+            this.moveSlider(index);
+            if (!this.paused) this.startSlide();
+        });
+    });
+};
+
+
+const slider = new Slider(".slider-list", {
     interval: 3000,
     showIndicators: true,
     showControls: true
