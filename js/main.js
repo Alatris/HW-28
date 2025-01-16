@@ -1,4 +1,4 @@
-
+document.addEventListener('DOMContentLoaded', () => {
 function Slider(sliderSelector, config = {}) {
     this.sliderList = document.querySelector(sliderSelector);
     this.slides = this.sliderList.querySelectorAll(".slider");
@@ -149,7 +149,7 @@ Slider.prototype.bindIndicatorEvents = function () {
 };
 
 
-const slider = new Slider(".slider-list", {
+const slider = new Slider(".slider-container", {
     interval: 3000,
     showIndicators: true,
     showControls: true
