@@ -1,0 +1,43 @@
+.slider-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.slider {
+    display: flex;
+    overflow: hidden;
+    width: 400px;
+    height: 300px;
+}
+
+.slide {
+    float: left;
+    width: 100%;
+    height: 300px;
+    text-align: center;
+    line-height: 300px;
+    font-size: 36px;
+}
+
+.active {
+    display: block;
+    opacity: 1;
+}
+
+.buttons-container {
+    display: flex;
+    justify-content: center;
+}
+.dot {
+    width: 10px;
+    height: 10px;
+    background-color: #ccc;
+    border-radius: 50%;
+    margin: 0 5px;
+    cursor: pointer;
+}
+
+.dot.active {
+    background-color: #333;
+}
