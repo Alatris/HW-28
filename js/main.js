@@ -1,155 +1,175 @@
-document.addEventListener('DOMContentLoaded', () => {
-function Slider(sliderSelector, config = {}) {
-    this.sliderList = document.querySelector(sliderSelector);
-    this.slides = this.sliderList.querySelectorAll(".slider");
-    this.currentIndex = 0;
-    this.config = Object.assign({
-        interval: 5000,
-        showIndicators: true,
-        showControls: true,
-    }, config);
-    this.autoSlide = null;
-    this.paused = false;
+class Slider {
+    constructor(containerId, config) {
+        this.container = document.getElementById(containerId);
+        this.slides = config.slides || [];
+        this.intervalTime = config.intervalTime || 3000;
+        this.currentSlide = 0;
+        this.intervalId = null;
+        this.isPlaying = true;
 
-    this.updateIndicators = function () {
-        if (!this.indicators) return;
-        this.indicators.forEach(indicator => indicator.classList.remove('active'));
-        this.indicators[this.currentIndex].classList.add('active');
-    };
+        this.init();
+    }
 
-    this.moveSlider = function (index) {
-        const slideWidth = this.slides[0].clientWidth;
-        this.sliderList.style.transform = `translateX(-${index * slideWidth}px)`;
-        this.currentIndex = index;
-        this.updateIndicators();
-    };
+    init() {
+        this.createSliderElements();
+        this.showSlide(this.currentSlide);
+        this.startAutoPlay();
+        this.addEventListeners();
+    }
 
-    this.startSlide = function () {
-        if (this.autoSlide) clearInterval(this.autoSlide);
-        this.autoSlide = setInterval(() => {
-            this.currentIndex = (this.currentIndex < this.slides.length - 1) ? this.currentIndex + 1 : 0;
-            this.moveSlider(this.currentIndex);
-        }, this.config.interval);
-    };
+    createSliderElements() {
+        const sliderWrapper = document.createElement('div');
+        sliderWrapper.className = 'slider-wrapper';
 
-    this.stopSlide = function () {
-        clearInterval(this.autoSlide);
-        this.autoSlide = null;
-    };
+        const slidesContainer = document.createElement('div');
+        slidesContainer.className = 'slides';
 
-    this.handleKeyboard = function (event) {
-        switch (event.key) {
-            case "ArrowLeft":
-                this.prevSlide();
-                break;
-            case "ArrowRight":
+        this.slides.forEach((slide) => {
+            const slideElement = document.createElement('div');
+            slideElement.className = 'slide';
+            const img = document.createElement('img');
+            img.src = slide;
+            slideElement.appendChild(img);
+            slidesContainer.appendChild(slideElement);
+        });
+
+        sliderWrapper.appendChild(slidesContainer);
+
+        const prevButton = document.createElement('button');
+        prevButton.className = 'control prev';
+        prevButton.textContent = '‹';
+        prevButton.addEventListener('click', () => {
+            this.prevSlide();
+            this.restartAutoPlay();
+        });
+
+        const nextButton = document.createElement('button');
+        nextButton.className = 'control next';
+        nextButton.textContent = '›';
+        nextButton.addEventListener('click', () => {
+            this.nextSlide();
+            this.restartAutoPlay();
+        });
+
+        const indicatorsContainer = document.createElement('div');
+        indicatorsContainer.className = 'indicators';
+
+        this.slides.forEach((_, index) => {
+            const indicator = document.createElement('div');
+            indicator.className = 'indicator';
+            indicator.dataset.slide = index;
+            indicator.addEventListener('click', () => {
+                this.goToSlide(index);
+                this.restartAutoPlay();
+            });
+            indicatorsContainer.appendChild(indicator);
+        });
+
+        const pausePlayButton = document.createElement('button');
+        pausePlayButton.className = 'pause-play';
+        pausePlayButton.textContent = '❚❚';
+        pausePlayButton.addEventListener('click', this.togglePlayPause.bind(this));
+
+        sliderWrapper.appendChild(prevButton);
+        sliderWrapper.appendChild(nextButton);
+        sliderWrapper.appendChild(indicatorsContainer);
+        sliderWrapper.appendChild(pausePlayButton);
+
+        this.container.appendChild(sliderWrapper);
+    }
+
+    showSlide(index) {
+        const slides = this.container.querySelectorAll('.slide');
+        const indicators = this.container.querySelectorAll('.indicator');
+
+        slides.forEach((slide, i) => {
+            slide.style.transform = `translateX(${(i - index) * 100}%)`;
+        });
+
+        indicators.forEach((indicator, i) => {
+            indicator.classList.toggle('active', i === index);
+        });
+    }
+
+    nextSlide() {
+        this.currentSlide = (this.currentSlide + 1) % this.slides.length;
+        this.showSlide(this.currentSlide);
+    }
+
+    prevSlide() {
+        this.currentSlide = (this.currentSlide - 1 + this.slides.length) % this.slides.length;
+        this.showSlide(this.currentSlide);
+    }
+
+    goToSlide(index) {
+        this.currentSlide = index;
+        this.showSlide(index);
+    }
+
+    startAutoPlay() {
+        this.intervalId = setInterval(this.nextSlide.bind(this), this.intervalTime);
+    }
+
+    stopAutoPlay() {
+        clearInterval(this.intervalId);
+    }
+
+    togglePlayPause() {
+        if (this.isPlaying) {
+            this.stopAutoPlay();
+            this.container.querySelector('.pause-play').textContent = '►';
+        } else {
+            this.startAutoPlay();
+            this.container.querySelector('.pause-play').textContent = '❚❚';
+        }
+        this.isPlaying = !this.isPlaying;
+    }
+
+    addEventListeners() {
+        const sliderWrapper = this.container.querySelector('.slider-wrapper');
+
+        sliderWrapper.addEventListener('mouseenter', () => {
+            this.stopAutoPlay();
+        });
+
+        sliderWrapper.addEventListener('mouseleave', () => {
+            if (this.isPlaying) {
+                this.startAutoPlay();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowRight') {
                 this.nextSlide();
-                break;
-            default:
-                break;
+                this.restartAutoPlay();
+            } else if (event.key === 'ArrowLeft') {
+                this.prevSlide();
+                this.restartAutoPlay();
+            }
+        });
+    }
+
+    restartAutoPlay() {
+        this.stopAutoPlay();
+        if (this.isPlaying) {
+            this.startAutoPlay();
         }
-    };
-
-    this.prevSlide = function () {
-        if (this.currentIndex > 0) {
-            this.currentIndex--;
-            this.moveSlider(this.currentIndex);
-        }
-        this.stopSlide();
-        if (!this.paused) this.startSlide();
-    };
-
-    this.nextSlide = function () {
-        if (this.currentIndex < this.slides.length - 1) {
-            this.currentIndex++;
-            this.moveSlider(this.currentIndex);
-        }
-        this.stopSlide();
-        if (!this.paused) this.startSlide();
-    };
-
-    this.init = function () {
-        document.addEventListener("keydown", this.handleKeyboard.bind(this));
-        if (this.config.showControls) this.createControls();
-        if (this.config.showIndicators) this.createIndicators();
-        this.startSlide();
-    };
-
-    this.init();
+    }
 }
 
-
-Slider.prototype.createControls = function () {
-    const controlsContainer = document.createElement('div');
-    controlsContainer.className = 'controls';
-
-    this.prevButton = document.createElement('button');
-    this.prevButton.className = 'prev';
-    this.prevButton.textContent = 'Previous';
-    controlsContainer.appendChild(this.prevButton);
-
-    this.nextButton = document.createElement('button');
-    this.nextButton.className = 'next';
-    this.nextButton.textContent = 'Next';
-    controlsContainer.appendChild(this.nextButton);
-
-    this.pauseButton = document.createElement('button');
-    this.pauseButton.className = 'pause';
-    this.pauseButton.textContent = 'Pause';
-    controlsContainer.appendChild(this.pauseButton);
-
-    document.body.appendChild(controlsContainer);
-
-    this.bindControlEvents();
-};
-
-Slider.prototype.bindControlEvents = function () {
-    this.prevButton.addEventListener("click", () => this.prevSlide());
-    this.nextButton.addEventListener("click", () => this.nextSlide());
-
-    this.pauseButton.addEventListener("click", () => {
-        if (this.paused) {
-            this.startSlide();
-            this.pauseButton.textContent = 'Pause';
-        } else {
-            this.stopSlide();
-            this.pauseButton.textContent = 'Play';
-        }
-        this.paused = !this.paused;
-    });
-};
-
-
-Slider.prototype.createIndicators = function () {
-    const indicatorContainer = document.createElement('div');
-    indicatorContainer.className = 'slider-indicator';
-
-    this.indicators = [];
-    this.slides.forEach((_, index) => {
-        const indicator = document.createElement('button');
-        indicator.className = 'indicator';
-        indicator.textContent = index + 1;
-        indicator.setAttribute('data-index', index);
-        indicatorContainer.appendChild(indicator);
-        this.indicators.push(indicator);
-    });
-
-    document.body.appendChild(indicatorContainer);
-    this.bindIndicatorEvents();
-};
-
-Slider.prototype.bindIndicatorEvents = function () {
-    this.indicators.forEach((indicator, index) => {
-        indicator.addEventListener("click", () => {
-            this.stopSlide();
-            this.moveSlider(index);
-            if (!this.paused) this.startSlide();
-        });
-    });
-};
-
-
-const slider = new Slider(".slider-container", {
+const slider = new Slider('slider-container', {
+    slides: [
+        'images/SAP.jpg',
+        'images/Гадлинг.jpg',
+        'images/Коготь_тигра.jpg',
+        'images/Нож-кастет.jpg',
+        'images/Пата.jpg',
+        'images/Рога_оленя.jpg',
+        'images/Сантесу.jpg',
+        'images/Туркана.jpg',
+        'images/Тэкко.jpg',
+        'images/Цестус.jpg',
+    ],
     interval: 3000,
     showIndicators: true,
     showControls: true
